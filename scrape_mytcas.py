@@ -177,17 +177,16 @@ class TCASScraper:
             print("No data to save.")
             return
 
-        timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
-        filename = f"tcas_data_{timestamp}.csv"
+        filename = f"tcas_data.csv"
         
         self.results_df.to_csv(filename, index=False, encoding='utf-8-sig')
         
         print("\n" + "="*50)
-        print(f"💾 Data saved successfully to {filename}")
+        print(f"Data saved successfully to {filename}")
         print(f"Total records: {len(self.results_df)}")
         
         # Display summary
-        print("\n📊 Summary:")
+        print("\nSummary:")
         print(self.results_df['คำค้น'].value_counts())
         
         with_fee_count = len(self.results_df[self.results_df['ค่าใช้จ่าย'] != 'ไม่พบข้อมูล'])

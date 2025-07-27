@@ -10,62 +10,81 @@
     <style>
         body {
             font-family: 'Sarabun', sans-serif;
-            background-color: #111827;
-            color: #f3f4f6;
+            background-color: #0f172a; /* bg-slate-900 */
+            color: #e2e8f0; /* text-slate-200 */
+        }
+        .card {
+            background-color: #1e293b; /* bg-slate-800 */
+            border: 1px solid #334155; /* border-slate-700 */
+            transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+        }
+        .card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
         }
         ::-webkit-scrollbar { width: 8px; }
-        ::-webkit-scrollbar-track { background: #1f2937; }
-        ::-webkit-scrollbar-thumb { background: #4b5563; border-radius: 10px; }
-        ::-webkit-scrollbar-thumb:hover { background: #6b7280; }
+        ::-webkit-scrollbar-track { background: #1e293b; }
+        ::-webkit-scrollbar-thumb { background: #475569; border-radius: 10px; }
+        ::-webkit-scrollbar-thumb:hover { background: #64748b; }
     </style>
 </head>
 <body class="antialiased">
     <div class="container mx-auto p-4 md:p-8">
         
-        <header class="text-center mb-8">
-            <h1 class="text-3xl md:text-4xl font-bold text-white">แดชบอร์ดเปรียบเทียบค่าใช้จ่ายหลักสูตร TCAS</h1>
-            <p class="text-gray-400 mt-2">ข้อมูลจากไฟล์: <span class="font-semibold text-cyan-400">{{ file_name }}</span></p>
+        <header class="text-center mb-10">
+            <h1 class="text-3xl md:text-5xl font-bold text-white bg-clip-text text-transparent bg-gradient-to-r from-cyan-400 to-emerald-400">
+                แดชบอร์ดค่าใช้จ่ายหลักสูตร TCAS
+            </h1>
+            <p class="text-slate-400 mt-2">ข้อมูลล่าสุดจากไฟล์: <span class="font-semibold text-cyan-400">{{ file_name }}</span></p>
         </header>
 
         <!-- Enhanced Stats Cards -->
-        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-            <div class="bg-gray-800 p-6 rounded-xl border border-gray-700">
-                <h3 class="text-lg font-semibold text-gray-300">จำนวนหลักสูตรทั้งหมด</h3>
-                <p class="text-4xl font-bold text-white">{{ total_programs }}</p>
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-10">
+            <div class="card p-6 rounded-xl flex items-center space-x-4">
+                <div class="bg-sky-500/10 p-3 rounded-full"><svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-sky-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" /></svg></div>
+                <div>
+                    <h3 class="text-lg font-semibold text-slate-300">หลักสูตรทั้งหมด</h3>
+                    <p class="text-3xl font-bold text-white">{{ total_programs }}</p>
+                </div>
             </div>
-            <div class="bg-gray-800 p-6 rounded-xl border border-gray-700">
-                <h3 class="text-lg font-semibold text-gray-300">หลักสูตรที่พบข้อมูลค่าใช้จ่าย</h3>
-                <p class="text-4xl font-bold text-white">{{ programs_with_fee }}</p>
+            <div class="card p-6 rounded-xl flex items-center space-x-4">
+                <div class="bg-green-500/10 p-3 rounded-full"><svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-green-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z" /></svg></div>
+                <div>
+                    <h3 class="text-lg font-semibold text-slate-300">พบข้อมูลค่าใช้จ่าย</h3>
+                    <p class="text-3xl font-bold text-white">{{ programs_with_fee }}</p>
+                </div>
             </div>
-            
-            <!-- Conditional rendering for stats -->
             {% if stats %}
-            <div class="bg-gray-800 p-6 rounded-xl border border-gray-700">
-                <h3 class="text-lg font-semibold text-gray-300">ค่าใช้จ่ายเฉลี่ย</h3>
-                <p class="text-4xl font-bold text-emerald-400">{{ "{:,.0f}".format(stats.average_fee) }}</p>
+            <div class="card p-6 rounded-xl flex items-center space-x-4">
+                <div class="bg-amber-500/10 p-3 rounded-full"><svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-amber-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v.01M12 6v-1h4a1 1 0 011 1v3h-1" /></svg></div>
+                <div>
+                    <h3 class="text-lg font-semibold text-slate-300">ค่าใช้จ่ายเฉลี่ย</h3>
+                    <p class="text-3xl font-bold text-emerald-400">{{ "{:,.0f}".format(stats.average_fee) }}</p>
+                </div>
             </div>
-            <div class="bg-gray-800 p-6 rounded-xl border border-gray-700">
-                <h3 class="text-lg font-semibold text-gray-300">สูงสุด / ต่ำสุด</h3>
-                <p class="text-2xl font-bold text-white">
-                    <span class="text-red-400">{{ "{:,.0f}".format(stats.max_fee) }}</span> / 
-                    <span class="text-sky-400">{{ "{:,.0f}".format(stats.min_fee) }}</span>
-                </p>
+            <div class="card p-6 rounded-xl flex items-center space-x-4">
+                <div class="bg-rose-500/10 p-3 rounded-full"><svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-rose-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M7 11l5-5m0 0l5 5m-5-5v12" /><path stroke-linecap="round" stroke-linejoin="round" d="M17 13l-5 5m0 0l-5-5m5 5V6" /></svg></div>
+                <div>
+                    <h3 class="text-lg font-semibold text-slate-300">สูงสุด / ต่ำสุด</h3>
+                    <p class="text-xl font-bold text-white">
+                        <span class="text-red-400">{{ "{:,.0f}".format(stats.max_fee) }}</span> / 
+                        <span class="text-sky-400">{{ "{:,.0f}".format(stats.min_fee) }}</span>
+                    </p>
+                </div>
             </div>
             {% endif %}
         </div>
 
         <!-- Charts Grid -->
-        <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
-            <!-- Top Programs Chart -->
-            <div class="bg-gray-800 p-4 md:p-6 rounded-xl border border-gray-700">
+        <div class="grid grid-cols-1 lg:grid-cols-5 gap-6 mb-10">
+            <div class="card lg:col-span-3 p-4 md:p-6 rounded-xl">
                 <h2 class="text-xl font-bold mb-4 text-center">20 อันดับหลักสูตรค่าใช้จ่ายสูงสุด (บาท)</h2>
                 <div class="relative h-96 md:h-[500px]">
                     <canvas id="topProgramsChart"></canvas>
                 </div>
             </div>
-            <!-- University Average Cost Chart -->
-            <div class="bg-gray-800 p-4 md:p-6 rounded-xl border border-gray-700">
-                <h2 class="text-xl font-bold mb-4 text-center">15 อันดับ ม. ที่มีค่าใช้จ่ายเฉลี่ยสูงสุด (บาท)</h2>
+            <div class="card lg:col-span-2 p-4 md:p-6 rounded-xl">
+                <h2 class="text-xl font-bold mb-4 text-center">15 อันดับ ม. ค่าใช้จ่ายเฉลี่ยสูงสุด</h2>
                 <div class="relative h-96 md:h-[500px]">
                     <canvas id="universityAverageCostChart"></canvas>
                 </div>
@@ -73,22 +92,22 @@
         </div>
 
         <!-- University Stats Table -->
-        <div class="bg-gray-800 p-4 md:p-6 rounded-xl border border-gray-700 mb-8">
+        <div class="card p-4 md:p-6 rounded-xl mb-10">
             <h2 class="text-xl font-bold mb-4">สรุปข้อมูลรายมหาวิทยาลัย</h2>
             <div class="overflow-x-auto max-h-96">
-                <table class="min-w-full divide-y divide-gray-700">
-                    <thead class="bg-gray-700 sticky top-0">
+                <table class="min-w-full divide-y divide-slate-700">
+                    <thead class="bg-slate-700/100 sticky top-0">
                         <tr>
-                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">มหาวิทยาลัย</th>
-                            <th scope="col" class="px-6 py-3 text-center text-xs font-medium text-gray-300 uppercase tracking-wider">จำนวนหลักสูตร</th>
-                            <th scope="col" class="px-6 py-3 text-right text-xs font-medium text-gray-300 uppercase tracking-wider">ค่าใช้จ่ายเฉลี่ย (บาท)</th>
+                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-slate-300 uppercase tracking-wider">มหาวิทยาลัย</th>
+                            <th scope="col" class="px-6 py-3 text-center text-xs font-medium text-slate-300 uppercase tracking-wider">จำนวนหลักสูตร</th>
+                            <th scope="col" class="px-6 py-3 text-right text-xs font-medium text-slate-300 uppercase tracking-wider">ค่าใช้จ่ายเฉลี่ย (บาท)</th>
                         </tr>
                     </thead>
-                    <tbody class="bg-gray-800 divide-y divide-gray-700">
+                    <tbody class="bg-slate-800 divide-y divide-slate-700">
                         {% for uni in university_stats %}
-                        <tr class="hover:bg-gray-700 transition-colors duration-200">
+                        <tr class="hover:bg-slate-700/100 transition-colors duration-200">
                             <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-white">{{ uni['มหาวิทยาลัย'] }}</td>
-                            <td class="px-6 py-4 whitespace-nowrap text-sm text-center text-gray-300">{{ uni['program_count'] }}</td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-center text-slate-300">{{ uni['program_count'] }}</td>
                             <td class="px-6 py-4 whitespace-nowrap text-sm text-right text-emerald-400 font-semibold">{{ "{:,.0f}".format(uni['average_fee']) }}</td>
                         </tr>
                         {% endfor %}
@@ -97,23 +116,31 @@
             </div>
         </div>
 
-        <!-- Full Data Table Section -->
-        <div class="bg-gray-800 p-4 md:p-6 rounded-xl border border-gray-700">
-            <h2 class="text-xl font-bold mb-4">ตารางข้อมูลทั้งหมด (เรียงตามค่าใช้จ่าย)</h2>
+        <!-- Full Data Table Section with Search -->
+        <div class="card p-4 md:p-6 rounded-xl">
+            <div class="flex flex-col sm:flex-row justify-between items-center mb-4">
+                <h2 class="text-xl font-bold">ตารางข้อมูลทั้งหมด</h2>
+                <div class="relative mt-4 sm:mt-0">
+                    <input type="text" id="tableSearch" class="bg-slate-700 border border-slate-600 text-slate-200 text-sm rounded-lg focus:ring-cyan-500 focus:border-cyan-500 block w-full pl-10 p-2.5" placeholder="ค้นหาหลักสูตร/มหาวิทยาลัย...">
+                    <div class="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
+                        <svg class="w-5 h-5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
+                    </div>
+                </div>
+            </div>
             <div class="overflow-x-auto max-h-96">
-                <table class="min-w-full divide-y divide-gray-700">
-                    <thead class="bg-gray-700 sticky top-0">
+                <table id="fullDataTable" class="min-w-full divide-y divide-slate-700">
+                    <thead class="bg-slate-700/100 sticky top-0">
                         <tr>
-                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">ชื่อหลักสูตร</th>
-                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">มหาวิทยาลัย</th>
-                            <th scope="col" class="px-6 py-3 text-right text-xs font-medium text-gray-300 uppercase tracking-wider">ค่าใช้จ่าย (บาท)</th>
+                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-slate-300 uppercase tracking-wider">ชื่อหลักสูตร</th>
+                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-slate-300 uppercase tracking-wider">มหาวิทยาลัย</th>
+                            <th scope="col" class="px-6 py-3 text-right text-xs font-medium text-slate-300 uppercase tracking-wider">ค่าใช้จ่าย (บาท)</th>
                         </tr>
                     </thead>
-                    <tbody class="bg-gray-800 divide-y divide-gray-700">
+                    <tbody class="bg-slate-800 divide-y divide-slate-700">
                         {% for row in table_data %}
-                        <tr class="hover:bg-gray-700 transition-colors duration-200">
+                        <tr class="hover:bg-slate-700/100 transition-colors duration-200">
                             <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-white">{{ row['ชื่อหลักสูตร'] }}</td>
-                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-300">{{ row['มหาวิทยาลัย'] }}</td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-slate-300">{{ row['มหาวิทยาลัย'] }}</td>
                             <td class="px-6 py-4 whitespace-nowrap text-sm text-right text-cyan-400 font-semibold">{{ "{:,.0f}".format(row['fee_numeric']) }}</td>
                         </tr>
                         {% endfor %}
@@ -121,6 +148,10 @@
                 </table>
             </div>
         </div>
+        
+        <footer class="text-center mt-10 text-slate-500 text-sm">
+            <p>TCAS Dashboard | สร้างสรรค์โดย Qier</p>
+        </footer>
 
     </div>
 
@@ -129,6 +160,10 @@
             if (num === null || num === undefined) return 'N/A';
             return new Intl.NumberFormat('th-TH').format(num);
         }
+
+        // --- Chart.js Global Config ---
+        Chart.defaults.color = '#94a3b8'; // text-slate-400
+        Chart.defaults.font.family = "'Sarabun', sans-serif";
 
         // --- Top Programs Chart (Horizontal Bar) ---
         const topProgramsCtx = document.getElementById('topProgramsChart').getContext('2d');
@@ -156,10 +191,10 @@
                 scales: {
                     x: {
                         beginAtZero: true,
-                        ticks: { color: '#9ca3af', callback: (v) => formatNumber(v) },
-                        grid: { color: 'rgba(255, 255, 255, 0.1)' }
+                        ticks: { color: '#94a3b8', callback: (v) => formatNumber(v) },
+                        grid: { color: 'rgba(255, 255, 255, 0.05)' }
                     },
-                    y: { ticks: { color: '#d1d5db' }, grid: { display: false } }
+                    y: { ticks: { color: '#e2e8f0' }, grid: { display: false } }
                 }
             }
         });
@@ -173,14 +208,13 @@
                 datasets: [{
                     label: 'ค่าใช้จ่ายเฉลี่ย (บาท)',
                     data: {{ uni_chart_values|safe }},
-                    backgroundColor: 'rgba(52, 211, 153, 0.6)', // emerald-400
+                    backgroundColor: 'rgba(52, 211, 153, 0.6)',
                     borderColor: 'rgba(52, 211, 153, 1)',
                     borderWidth: 1,
                     borderRadius: 4,
                 }]
             },
             options: {
-                indexAxis: 'x',
                 responsive: true,
                 maintainAspectRatio: false,
                 plugins: {
@@ -190,12 +224,27 @@
                 scales: {
                     y: {
                         beginAtZero: true,
-                        ticks: { color: '#9ca3af', callback: (v) => formatNumber(v) },
-                        grid: { color: 'rgba(255, 255, 255, 0.1)' }
+                        ticks: { color: '#94a3b8', callback: (v) => formatNumber(v) },
+                        grid: { color: 'rgba(255, 255, 255, 0.05)' }
                     },
-                    x: { ticks: { color: '#d1d5db' }, grid: { display: false } }
+                    x: { ticks: { color: '#e2e8f0' }, grid: { display: false } }
                 }
             }
+        });
+
+        // --- Table Search Functionality ---
+        document.getElementById('tableSearch').addEventListener('keyup', function() {
+            const searchTerm = this.value.toLowerCase();
+            const tableRows = document.querySelectorAll('#fullDataTable tbody tr');
+            
+            tableRows.forEach(row => {
+                const rowText = row.textContent.toLowerCase();
+                if (rowText.includes(searchTerm)) {
+                    row.style.display = '';
+                } else {
+                    row.style.display = 'none';
+                }
+            });
         });
     </script>
 </body>
