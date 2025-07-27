@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TCAS Program Cost Dashboard</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Sarabun', sans-serif;
+            background-color: #111827;
+            color: #f3f4f6;
+        }
+        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar-track { background: #1f2937; }
+        ::-webkit-scrollbar-thumb { background: #4b5563; border-radius: 10px; }
+        ::-webkit-scrollbar-thumb:hover { background: #6b7280; }
+    </style>
+</head>
+<body class="antialiased">
+    <div class="container mx-auto p-4 md:p-8">
+        
+        <header class="text-center mb-8">
+            <h1 class="text-3xl md:text-4xl font-bold text-white">แดชบอร์ดเปรียบเทียบค่าใช้จ่ายหลักสูตร TCAS</h1>
+            <p class="text-gray-400 mt-2">ข้อมูลจากไฟล์: <span class="font-semibold text-cyan-400">{{ file_name }}</span></p>
+        </header>
+
+        <!-- Enhanced Stats Cards -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+            <div class="bg-gray-800 p-6 rounded-xl border border-gray-700">
+                <h3 class="text-lg font-semibold text-gray-300">จำนวนหลักสูตรทั้งหมด</h3>
+                <p class="text-4xl font-bold text-white">{{ total_programs }}</p>
+            </div>
+            <div class="bg-gray-800 p-6 rounded-xl border border-gray-700">
+                <h3 class="text-lg font-semibold text-gray-300">หลักสูตรที่พบข้อมูลค่าใช้จ่าย</h3>
+                <p class="text-4xl font-bold text-white">{{ programs_with_fee }}</p>
+            </div>
+            
+            <!-- Conditional rendering for stats -->
+            {% if stats %}
+            <div class="bg-gray-800 p-6 rounded-xl border border-gray-700">
+                <h3 class="text-lg font-semibold text-gray-300">ค่าใช้จ่ายเฉลี่ย</h3>
+                <p class="text-4xl font-bold text-emerald-400">{{ "{:,.0f}".format(stats.average_fee) }}</p>
+            </div>
+            <div class="bg-gray-800 p-6 rounded-xl border border-gray-700">
+                <h3 class="text-lg font-semibold text-gray-300">สูงสุด / ต่ำสุด</h3>
+                <p class="text-2xl font-bold text-white">
+                    <span class="text-red-400">{{ "{:,.0f}".format(stats.max_fee) }}</span> / 
+                    <span class="text-sky-400">{{ "{:,.0f}".format(stats.min_fee) }}</span>
+                </p>
+            </div>
+            {% endif %}
+        </div>
+
+        <!-- Charts Grid -->
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
+            <!-- Top Programs Chart -->
+            <div class="bg-gray-800 p-4 md:p-6 rounded-xl border border-gray-700">
+                <h2 class="text-xl font-bold mb-4 text-center">20 อันดับหลักสูตรค่าใช้จ่ายสูงสุด (บาท)</h2>
+                <div class="relative h-96 md:h-[500px]">
+                    <canvas id="topProgramsChart"></canvas>
+                </div>
+            </div>
+            <!-- University Average Cost Chart -->
+            <div class="bg-gray-800 p-4 md:p-6 rounded-xl border border-gray-700">
+                <h2 class="text-xl font-bold mb-4 text-center">15 อันดับ ม. ที่มีค่าใช้จ่ายเฉลี่ยสูงสุด (บาท)</h2>
+                <div class="relative h-96 md:h-[500px]">
+                    <canvas id="universityAverageCostChart"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <!-- University Stats Table -->
+        <div class="bg-gray-800 p-4 md:p-6 rounded-xl border border-gray-700 mb-8">
+            <h2 class="text-xl font-bold mb-4">สรุปข้อมูลรายมหาวิทยาลัย</h2>
+            <div class="overflow-x-auto max-h-96">
+                <table class="min-w-full divide-y divide-gray-700">
+                    <thead class="bg-gray-700 sticky top-0">
+                        <tr>
+                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">มหาวิทยาลัย</th>
+                            <th scope="col" class="px-6 py-3 text-center text-xs font-medium text-gray-300 uppercase tracking-wider">จำนวนหลักสูตร</th>
+                            <th scope="col" class="px-6 py-3 text-right text-xs font-medium text-gray-300 uppercase tracking-wider">ค่าใช้จ่ายเฉลี่ย (บาท)</th>
+                        </tr>
+                    </thead>
+                    <tbody class="bg-gray-800 divide-y divide-gray-700">
+                        {% for uni in university_stats %}
+                        <tr class="hover:bg-gray-700 transition-colors duration-200">
+                            <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-white">{{ uni['มหาวิทยาลัย'] }}</td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-center text-gray-300">{{ uni['program_count'] }}</td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-right text-emerald-400 font-semibold">{{ "{:,.0f}".format(uni['average_fee']) }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Full Data Table Section -->
+        <div class="bg-gray-800 p-4 md:p-6 rounded-xl border border-gray-700">
+            <h2 class="text-xl font-bold mb-4">ตารางข้อมูลทั้งหมด (เรียงตามค่าใช้จ่าย)</h2>
+            <div class="overflow-x-auto max-h-96">
+                <table class="min-w-full divide-y divide-gray-700">
+                    <thead class="bg-gray-700 sticky top-0">
+                        <tr>
+                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">ชื่อหลักสูตร</th>
+                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">มหาวิทยาลัย</th>
+                            <th scope="col" class="px-6 py-3 text-right text-xs font-medium text-gray-300 uppercase tracking-wider">ค่าใช้จ่าย (บาท)</th>
+                        </tr>
+                    </thead>
+                    <tbody class="bg-gray-800 divide-y divide-gray-700">
+                        {% for row in table_data %}
+                        <tr class="hover:bg-gray-700 transition-colors duration-200">
+                            <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-white">{{ row['ชื่อหลักสูตร'] }}</td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-300">{{ row['มหาวิทยาลัย'] }}</td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-right text-cyan-400 font-semibold">{{ "{:,.0f}".format(row['fee_numeric']) }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+    </div>
+
+    <script>
+        const formatNumber = (num) => {
+            if (num === null || num === undefined) return 'N/A';
+            return new Intl.NumberFormat('th-TH').format(num);
+        }
+
+        // --- Top Programs Chart (Horizontal Bar) ---
+        const topProgramsCtx = document.getElementById('topProgramsChart').getContext('2d');
+        new Chart(topProgramsCtx, {
+            type: 'bar',
+            data: {
+                labels: {{ top_programs_labels|safe }},
+                datasets: [{
+                    label: 'ค่าใช้จ่าย (บาท)',
+                    data: {{ top_programs_values|safe }},
+                    backgroundColor: 'rgba(34, 211, 238, 0.6)',
+                    borderColor: 'rgba(34, 211, 238, 1)',
+                    borderWidth: 1,
+                    borderRadius: 4,
+                }]
+            },
+            options: {
+                indexAxis: 'y',
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { display: false },
+                    tooltip: { callbacks: { label: (c) => ` ${formatNumber(c.parsed.x)} บาท` } }
+                },
+                scales: {
+                    x: {
+                        beginAtZero: true,
+                        ticks: { color: '#9ca3af', callback: (v) => formatNumber(v) },
+                        grid: { color: 'rgba(255, 255, 255, 0.1)' }
+                    },
+                    y: { ticks: { color: '#d1d5db' }, grid: { display: false } }
+                }
+            }
+        });
+
+        // --- University Average Cost Chart (Vertical Bar) ---
+        const uniAvgCostCtx = document.getElementById('universityAverageCostChart').getContext('2d');
+        new Chart(uniAvgCostCtx, {
+            type: 'bar',
+            data: {
+                labels: {{ uni_chart_labels|safe }},
+                datasets: [{
+                    label: 'ค่าใช้จ่ายเฉลี่ย (บาท)',
+                    data: {{ uni_chart_values|safe }},
+                    backgroundColor: 'rgba(52, 211, 153, 0.6)', // emerald-400
+                    borderColor: 'rgba(52, 211, 153, 1)',
+                    borderWidth: 1,
+                    borderRadius: 4,
+                }]
+            },
+            options: {
+                indexAxis: 'x',
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { display: false },
+                    tooltip: { callbacks: { label: (c) => ` ${formatNumber(c.parsed.y)} บาท` } }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        ticks: { color: '#9ca3af', callback: (v) => formatNumber(v) },
+                        grid: { color: 'rgba(255, 255, 255, 0.1)' }
+                    },
+                    x: { ticks: { color: '#d1d5db' }, grid: { display: false } }
+                }
+            }
+        });
+    </script>
+</body>
+</html>

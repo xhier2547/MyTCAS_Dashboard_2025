@@ -1,166 +1,240 @@
 import asyncio
-from playwright.async_api import async_playwright
-import json
-import re
-import os
+import pandas as pd
+from playwright.async_api import async_playwright, Page, Browser
+from datetime import datetime
+import traceback
 
-async def scrape_mytcas_detailed_data():
-    search_terms = [
-        "วิศวกรรมปัญญาประดิษฐ์"
-    ]
-    
-    all_scraped_data = [] # เก็บข้อมูลทั้งหมด
-    
-    async with async_playwright() as p:
-        # เปิดเบราว์เซอร์ Microsoft Edge โดยใช้ channel 'msedge' ผ่าน p.chromium.launch()
-        # ต้องแน่ใจว่าได้ติดตั้ง Playwright Edge drivers ด้วยคำสั่ง 'playwright install msedge' แล้ว
-        browser = await p.chromium.launch(channel='msedge', headless=False) 
-        page = await browser.new_page()
+# --- Constants and Configuration ---
 
-        print("กำลังไปยัง https://course.mytcas.com/ ...")
-        await page.goto("https://course.mytcas.com/", wait_until="domcontentloaded")
-        
-        # --- Selector ที่อิงจากรูปภาพทั้งหมดที่ให้มา ---
-        
-        # Selector สำหรับช่องค้นหาบนหน้าแรก: ใช้ id="input-search" ตามที่เห็นในรูปภาพ
-        SEARCH_INPUT_SELECTOR = '#search'
-        
-        # Selector สำหรับแต่ละรายการผลลัพธ์การค้นหาบนหน้าแรก:
-        # ul.t-programs > li > a[href*="/program/"] ตามที่เห็นใน image_cfdbbd.png และ image_d04fff.png
-        COURSE_RESULT_LINK_SELECTOR = 'ul.t-programs > li > a[href*="/programs/"]'
-        
-        # Selector ภายในหน้าแต่ละหลักสูตร (อิงจาก image_cee6cc.png และ image_cfcc64.jpg)
-        # ชื่อมหาวิทยาลัย: h2 ภายใน div.container.py-3
-        UNI_NAME_SELECTOR = 'div.container.py-3 h2'
-        # ชื่อหลักสูตรเต็ม: h3 ภายใน div.container.py-3
-        COURSE_FULL_NAME_SELECTOR = 'div.container.py-3 h3'
-        
-        # Selector สำหรับ "ค่าใช้จ่าย" (label) และ Element ที่มีค่าของมัน
-        # จาก image_cfcc64.jpg: <div class="col-6 col-md-6">ค่าใช้จ่าย</div>
-        # และ <div class="col-6 col-md-6">อัตราค่าเล่าเรียน 28,000.-/ภาคการศึกษา</div>
-        TUITION_VALUE_SELECTOR = 'div.col-6.col-md-6:has-text("ค่าใช้จ่าย") + div.col-6.col-md-6'
-        
-        for term in search_terms:
-            print(f"\n===== กำลังประมวลผลคำค้นหา: '{term}' =====")
-            
-            # 1. ค้นหา
+BASE_URL = "https://course.mytcas.com"
+USER_AGENT = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+HEADLESS_MODE = False  # Set to True to run without a visible browser window
+
+# Selectors are grouped for easier management
+SEARCH_SELECTORS = [
+    "input[placeholder='พิมพ์ชื่อมหาวิทยาลัย คณะ หรือหลักสูตร']",
+    "input[placeholder*='ค้นหา']",
+]
+RESULTS_LIST_SELECTOR = ".t-programs > li"
+PROGRAM_LINK_SELECTOR = "a"
+PROGRAM_TYPE_SELECTORS = [
+    "dt:has-text('ประเภทหลักสูตร') + dd",
+    ".program-type"
+]
+FEE_SELECTORS = [
+    "dt:has-text('ค่าใช้จ่าย') + dd",
+    "dt:has-text('ค่าธรรมเนียม') + dd",
+    ".fee-info",
+    ".tuition-fee"
+]
+
+
+class TCASScraper:
+    """
+    A class to scrape program information from the myTCAS website.
+    """
+    def __init__(self, keywords: list[str]):
+        self.keywords = keywords
+        self.results_df = pd.DataFrame()
+
+    async def run(self):
+        """
+        Initializes the scraper, runs the scraping process, and saves the results.
+        """
+        print("🚀 Starting TCAS Scraper...")
+        async with async_playwright() as p:
+            browser = await p.chromium.launch(headless=HEADLESS_MODE)
+            context = await browser.new_context(
+                locale='th-TH',
+                user_agent=USER_AGENT
+            )
+            page = await context.new_page()
+
             try:
-                # รอให้ช่องค้นหาปรากฏก่อน
-                await page.wait_for_selector(SEARCH_INPUT_SELECTOR, timeout=15000)
-                
-                # คลิกที่ช่องค้นหาเพื่อให้โฟกัส
-                await page.click(SEARCH_INPUT_SELECTOR)
-                print("คลิกที่ช่องค้นหาแล้ว")
-                
-                # ล้างช่องค้นหา (สำคัญมากก่อนจะกรอกใหม่สำหรับคำค้นถัดไป)
-                await page.fill(SEARCH_INPUT_SELECTOR, '') #
-                
-                # ใช้ page.type() เพื่อจำลองการพิมพ์ทีละตัวอักษร พร้อม delay
-                await page.type(SEARCH_INPUT_SELECTOR, term, delay=100) #
-                print(f"กรอกคำค้นหา '{term}' แล้ว")
-                
-                # กด Enter เพื่อให้ผลลัพธ์ขึ้นตามรูป
-                await page.keyboard.press('Enter') #
-                
-                # รอให้ network สงบหลังค้นหา และรอให้ผลลัพธ์ปรากฏ
-                await page.wait_for_load_state('networkidle', timeout=15000) #
-                # อาจต้องเพิ่ม delay เล็กน้อยหลังกด Enter ถ้าผลลัพธ์ไม่ขึ้นทันที
-                await page.wait_for_timeout(1000) # รอ 1 วินาที (ปรับค่าได้ตามความเหมาะสม)
+                all_program_links = await self._collect_all_program_links(page)
+                if not all_program_links:
+                    print("❌ No programs found matching the keywords.")
+                    return
+
+                scraped_data = await self._scrape_program_details(page, all_program_links)
+                if scraped_data:
+                    self.results_df = pd.DataFrame(scraped_data)
+                    self._save_to_csv()
 
             except Exception as e:
-                print(f"  - เกิดข้อผิดพลาดในการค้นหาสำหรับ '{term}': {e}")
-                continue # ข้ามไปยังคำค้นหาถัดไป
-            
-            # ดึงลิงก์ของแต่ละหลักสูตรจากผลการค้นหา
-            current_term_links = set() # ใช้ set เพื่อป้องกันลิงก์ซ้ำ
+                print(f"An unexpected error occurred: {e}")
+                print(traceback.format_exc())
+            finally:
+                await browser.close()
+                print("✅ Scraper has finished its job.")
+
+    async def _collect_all_program_links(self, page: Page) -> list[dict]:
+        """
+        Searches for keywords and collects links to program detail pages.
+        """
+        program_links = []
+        unique_urls = set()
+
+        for keyword in self.keywords:
+            print(f"\n🔎 Searching for keyword: '{keyword}'")
             try:
-                # รอให้ผลลัพธ์การค้นหา (รายการ ul.t-programs > li) ปรากฏ
-                # เพิ่ม timeout สำหรับการรอ selector ผลลัพธ์ อาจจะใช้เวลาโหลดนาน
-                await page.wait_for_selector(COURSE_RESULT_LINK_SELECTOR, state='visible', timeout=20000)
+                await page.goto(BASE_URL, wait_until='domcontentloaded')
+
+                # Find and fill the search box
+                search_input = None
+                for selector in SEARCH_SELECTORS:
+                    search_input = page.locator(selector).first
+                    if await search_input.is_visible(timeout=5000):
+                        break
                 
-                # ดึง href ของลิงก์ทั้งหมด
-                link_locators = await page.locator(COURSE_RESULT_LINK_SELECTOR).all()
-                if not link_locators:
-                    print(f"  - ไม่พบลิงก์ผลลัพธ์สำหรับ '{term}'")
+                if not search_input:
+                    print("  - Could not find the search input box.")
                     continue
 
-                for locator in link_locators:
-                    href = await locator.get_attribute('href')
-                    if href and "/programs/" in href: # ตรวจสอบให้แน่ใจว่าเป็นลิงก์หลักสูตร
-                        full_url = f"https://course.mytcas.com{href}" # สร้าง URL เต็ม
-                        current_term_links.add(full_url)
-                
-                print(f"  - พบ {len(current_term_links)} ลิงก์หลักสูตรที่เกี่ยวข้องสำหรับ '{term}'")
+                await search_input.fill(keyword)
+                await search_input.press("Enter")
+                await page.wait_for_timeout(2000) # Wait for results to load
+
+                # Collect results
+                results = await page.query_selector_all(RESULTS_LIST_SELECTOR)
+                print(f"  - Found {len(results)} results.")
+
+                for item in results:
+                    link_element = await item.query_selector(PROGRAM_LINK_SELECTOR)
+                    if not link_element:
+                        continue
+
+                    relative_url = await link_element.get_attribute("href")
+                    full_url = f"{BASE_URL}{relative_url}"
+
+                    if full_url not in unique_urls:
+                        unique_urls.add(full_url)
+                        text_content = (await item.inner_text()).split('\n')
+                        program_links.append({
+                            'keyword': keyword,
+                            'program_name': text_content[0].strip() if len(text_content) > 0 else "N/A",
+                            'faculty': text_content[1].strip() if len(text_content) > 1 else "N/A",
+                            'university': text_content[2].strip() if len(text_content) > 2 else "N/A",
+                            'url': full_url
+                        })
 
             except Exception as e:
-                print(f"  - เกิดข้อผิดพลาดในการดึงลิงก์จากผลลัพธ์สำหรับ '{term}': {e}")
-                continue
-
-            # 3. วนลูปเข้าแต่ละลิงก์และดึงข้อมูลรายละเอียด
-            for i, course_url in enumerate(list(current_term_links)): # แปลงเป็น list เพื่อวนลูป
-                print(f"  กำลังดึงข้อมูลจากลิงก์ที่ {i+1}/{len(current_term_links)}: {course_url}")
-                course_page = await browser.new_page() # เปิดแท็บใหม่สำหรับแต่ละหลักสูตร
-                try:
-                    await course_page.goto(course_url, wait_until="domcontentloaded", timeout=30000)
-                    
-                    # เพิ่มการรอ 2 วินาทีหลังจากเปิดลิงก์ใหม่ตามคำขอ
-                    await course_page.wait_for_timeout(2000) 
-
-                    # 4. ดึงข้อมูลจากหน้าหลักสูตร
-                    uni_name = "N/A"
-                    course_full_name = "N/A"
-                    tuition_fee = "N/A"
-
-                    try:
-                        # ชื่อมหาวิทยาลัย
-                        uni_name_element = course_page.locator(UNI_NAME_SELECTOR).first
-                        if await uni_name_element.is_visible(): 
-                            uni_name = (await uni_name_element.text_content()).strip()
-
-                        # ชื่อหลักสูตรเต็ม
-                        course_full_name_element = course_page.locator(COURSE_FULL_NAME_SELECTOR).first
-                        if await course_full_name_element.is_visible(): 
-                            course_full_name = (await course_full_name_element.text_content()).strip()
-
-                        # ค่าใช้จ่าย (ค่าเทอม)
-                        tuition_value_element = course_page.locator(TUITION_VALUE_SELECTOR).first
-                        if await tuition_value_element.count() > 0 and await tuition_value_element.is_visible(): 
-                            tuition_fee = await tuition_value_element.text_content()
-                            tuition_fee = tuition_fee.strip() #
-                                
-                    except Exception as e_detail:
-                        print(f"    - เกิดข้อผิดพลาดในการดึงรายละเอียดหลักจากหน้า {course_url}: {e_detail}")
-
-                    # กรองเฉพาะหลักสูตรที่เกี่ยวข้องกับคำค้นหา
-                    # ตรวจสอบว่า ชื่อหลักสูตร หรือชื่อมหาวิทยาลัย มีคำที่เกี่ยวข้องอยู่ในกลุ่มเป้าหมาย
-                    if any(k_word in course_full_name or k_word in uni_name for k_word in ["ปัญญาประดิษฐ์", "คอมพิวเตอร์", "AI", "Software", "วิทยาการ", "วิศวกรรม", "เทคโนโลยีสารสนเทศ"]):
-                         # ตรวจสอบว่าได้ข้อมูลหลักครบถ้วนก่อนเพิ่ม
-                        if "N/A" not in uni_name and "N/A" not in course_full_name: 
-                            all_scraped_data.append({
-                                "university_name": uni_name,
-                                "course_name": course_full_name,
-                                "tuition_fee": tuition_fee,
-                                "source_url": course_url,
-                                "search_term_used": term 
-                            })
-                            print(f"    - ดึงข้อมูลได้: มหาวิทยาลัย: {uni_name} | หลักสูตร: {course_full_name} | ค่าเทอม: {tuition_fee}")
-                        else:
-                            print(f"    - ดึงข้อมูลหลัก (ชื่อมหาลัย/หลักสูตร) ไม่ครบถ้วนจาก {course_url}")
-
-                except Exception as e_page:
-                    print(f"  - เกิดข้อผิดพลาดในการเข้าถึงหน้า {course_url}: {e_page}")
-                finally:
-                    await course_page.close() # ปิดแท็บหลังจากดึงข้อมูลเสร็จ
-
-        await browser.close() 
-        print("\nปิดเบราว์เซอร์เรียบร้อยแล้ว")
+                print(f"  - Error while searching for '{keyword}': {e}")
         
-        # บันทึกข้อมูลที่ได้ลงในไฟล์ JSON
-        with open('mytcas_tuition_data.json', 'w', encoding='utf-8') as f:
-            json.dump(all_scraped_data, f, ensure_ascii=False, indent=4)
-        print(f"บันทึกข้อมูลทั้งหมด {len(all_scraped_data)} รายการลงใน mytcas_tuition_data.json แล้ว")
+        print(f"\nCollected {len(program_links)} unique program links.")
+        return program_links
+
+    async def _scrape_program_details(self, page: Page, program_links: list[dict]) -> list[dict]:
+        """
+        Navigates to each program URL and extracts detailed information.
+        """
+        all_details = []
+        total = len(program_links)
+
+        for i, program in enumerate(program_links, 1):
+            print(f"\n[{i}/{total}] Scraping: {program['program_name']}")
+            print(f"  - University: {program['university']}")
+
+            try:
+                await page.goto(program['url'], wait_until='domcontentloaded')
+
+                program_type = await self._get_text_from_selectors(page, PROGRAM_TYPE_SELECTORS)
+                fee = await self._get_text_from_selectors(page, FEE_SELECTORS)
+
+                all_details.append({
+                    'คำค้น': program['keyword'],
+                    'ชื่อหลักสูตร': program['program_name'],
+                    'มหาวิทยาลัย': program['university'],
+                    'คณะ': program['faculty'],
+                    'ประเภทหลักสูตร': program_type,
+                    'ค่าใช้จ่าย': fee,
+                    'ลิงก์': program['url'],
+                    'วันที่เก็บข้อมูล': datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+                })
+                print(f"  - Fee: {fee}")
+                await asyncio.sleep(1) # Be respectful to the server
+
+            except Exception as e:
+                print(f"  - Failed to scrape {program['url']}: {e}")
+
+        return all_details
+    
+    async def _get_text_from_selectors(self, page: Page, selectors: list[str]) -> str:
+        """
+        Tries a list of selectors and returns the inner text of the first one found.
+        """
+        for selector in selectors:
+            element = page.locator(selector).first
+            if await element.is_visible(timeout=1000):
+                return (await element.inner_text()).strip()
+        return "ไม่พบข้อมูล"
+
+    def _save_to_csv(self):
+        """
+        Saves the scraped data to a CSV file.
+        """
+        if self.results_df.empty:
+            print("No data to save.")
+            return
+
+        timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+        filename = f"tcas_data_{timestamp}.csv"
         
-        return all_scraped_data
+        self.results_df.to_csv(filename, index=False, encoding='utf-8-sig')
+        
+        print("\n" + "="*50)
+        print(f"💾 Data saved successfully to {filename}")
+        print(f"Total records: {len(self.results_df)}")
+        
+        # Display summary
+        print("\n📊 Summary:")
+        print(self.results_df['คำค้น'].value_counts())
+        
+        with_fee_count = len(self.results_df[self.results_df['ค่าใช้จ่าย'] != 'ไม่พบข้อมูล'])
+        print(f"\nPrograms with fee information: {with_fee_count}/{len(self.results_df)}")
+        print("="*50)
+
+
+def get_user_keywords() -> list[str]:
+    """
+    Prompts the user to select or enter keywords.
+    """
+    print("\nSelect search keywords:")
+    print("1. วิศวกรรมปัญญาประดิษฐ์ (Artificial Intelligence Engineering)")
+    print("2. วิศวกรรมคอมพิวเตอร์ (Computer Engineering)")
+    print("3. Both of the above")
+    print("4. Enter custom keywords")
+
+    choice = input("Enter your choice (1-4): ").strip()
+    
+    if choice == "1":
+        return ["วิศวกรรมปัญญาประดิษฐ์"]
+    if choice == "2":
+        return ["วิศวกรรมคอมพิวเตอร์"]
+    if choice == "3":
+        return ["วิศวกรรม ปัญญาประดิษฐ์", "วิศวกรรม คอมพิวเตอร์"]
+    if choice == "4":
+        custom = input("Enter keywords, separated by commas: ")
+        return [k.strip() for k in custom.split(',') if k.strip()]
+        
+    print("Invalid choice. Defaulting to Computer Engineering.")
+    return ["วิศวกรรมคอมพิวเตอร์"]
+
+
+async def main():
+    """
+    Main function to run the scraper.
+    """
+    try:
+        keywords = get_user_keywords()
+        scraper = TCASScraper(keywords=keywords)
+        await scraper.run()
+    except KeyboardInterrupt:
+        print("\n⏹️ User stopped the program.")
+    except Exception as e:
+        print(f"\nA critical error occurred in main: {e}")
+        print(traceback.format_exc())
+
 
 if __name__ == "__main__":
-    asyncio.run(scrape_mytcas_detailed_data())
+    asyncio.run(main())
