@@ -27,24 +27,22 @@ def clean_fee_data(fee_str):
 
 @app.route('/')
 def dashboard():
-    """
-    Main route for the dashboard. Finds the latest CSV, processes data,
-    and renders the dashboard page.
-    """
     try:
         # Find the most recent tcas_data CSV file
         list_of_files = glob.glob('tcas_data.csv')
         if not list_of_files:
-            return render_template('error.html', message="ไม่พบไฟล์ข้อมูล CSV (tcas_data_*.csv)")
-            
-        latest_file = max(list_of_files, key=os.path.getctime)
+            # Use the specific tcas_data.csv if no timestamped version is found
+            if os.path.exists('tcas_data.csv'):
+                latest_file = 'tcas_data.csv'
+            else:
+                return render_template('error.html', message="ไม่พบไฟล์ข้อมูล CSV (tcas_data_*.csv)")
+        else:
+             latest_file = max(list_of_files, key=os.path.getctime)
+
         print(f"กำลังใช้ไฟล์ข้อมูล: {latest_file}")
 
-        # --- MODIFIED LINE ---
-        # Added on_bad_lines='warn' to prevent crashing on malformed CSV lines.
-        # The app will now show a warning and skip the problematic lines instead of stopping.
+        # Use engine='python' and on_bad_lines='warn' for robustness
         df = pd.read_csv(latest_file, engine='python', on_bad_lines='warn')
-        # ---------------------
 
         # --- Data Processing ---
         df['fee_numeric'] = df['ค่าใช้จ่าย'].apply(clean_fee_data)

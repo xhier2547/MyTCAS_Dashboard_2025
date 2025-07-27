@@ -177,7 +177,7 @@ class TCASScraper:
             print("No data to save.")
             return
 
-        filename = f"tcas_data.csv"
+        filename = "tcas_data.csv"
         
         self.results_df.to_csv(filename, index=False, encoding='utf-8-sig')
         
@@ -194,42 +194,20 @@ class TCASScraper:
         print("="*50)
 
 
-def get_user_keywords() -> list[str]:
-    """
-    Prompts the user to select or enter keywords.
-    """
-    print("\nSelect search keywords:")
-    print("1. วิศวกรรมปัญญาประดิษฐ์ (Artificial Intelligence Engineering)")
-    print("2. วิศวกรรมคอมพิวเตอร์ (Computer Engineering)")
-    print("3. Both of the above")
-    print("4. Enter custom keywords")
-
-    choice = input("Enter your choice (1-4): ").strip()
-    
-    if choice == "1":
-        return ["วิศวกรรมปัญญาประดิษฐ์"]
-    if choice == "2":
-        return ["วิศวกรรมคอมพิวเตอร์"]
-    if choice == "3":
-        return ["วิศวกรรม ปัญญาประดิษฐ์", "วิศวกรรม คอมพิวเตอร์"]
-    if choice == "4":
-        custom = input("Enter keywords, separated by commas: ")
-        return [k.strip() for k in custom.split(',') if k.strip()]
-        
-    print("Invalid choice. Defaulting to Computer Engineering.")
-    return ["วิศวกรรมคอมพิวเตอร์"]
-
-
 async def main():
     """
     Main function to run the scraper.
     """
     try:
-        keywords = get_user_keywords()
+        # Keywords are now hardcoded for the desired search.
+        keywords = ["วิศวกรรมปัญญาประดิษฐ์", "วิศวกรรมคอมพิวเตอร์"]
+        print(f"Scraping for keywords: {', '.join(keywords)}")
+        
         scraper = TCASScraper(keywords=keywords)
         await scraper.run()
+        
     except KeyboardInterrupt:
-        print("\n⏹️ User stopped the program.")
+        print("\n⏹ User stopped the program.")
     except Exception as e:
         print(f"\nA critical error occurred in main: {e}")
         print(traceback.format_exc())
